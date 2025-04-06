@@ -1,0 +1,132 @@
+---
+title: "Psychometric Exercises"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+
+
+```
+
+### Simulate a subject's psychometric function for a stimulus sequence from -20 to 20 with:
+
+$$
+\alpha = 5, 
+\beta = 2,
+\lambda = 0.05
+$$
+
+```{r}
+# define parameters 
+
+# Simulate the stimulus sequence:
+
+# function for the psychometric function:
+
+
+# generate probabilities
+
+# plot stimulus sequences vs probabilities:
+
+```
+
+
+### In these experiments we don't observe the probability of the our subjects responding we observe the response. 
+
+### Thus how do we go from our probabilities to the actual binary outcomes?
+
+
+```{r}
+# Covert each probability to a binary response by using a distribution.
+
+
+# plot stimulus sequences vs probabilities with the realized binary responses.
+
+
+```
+
+
+## Code up a stanmodel that takes the stimulus sequences, binary responses that assumes the same psychometric function as you simulated data with. You can do this in the code-chunk below or make a seperate stan-file
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimulus sequence)  
+
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the threshold
+  
+  // Define the slope
+  
+  // Define the lapse rate
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // threshold prior
+  
+  // slope prior
+  
+  // lapse rate prior
+  
+  
+  
+  // the model and the likelihood:
+    
+
+    
+}
+```
+
+
+### Now lets see if the model runs:
+
+```{r}
+# if you wrote a seperate stan-file load it here:
+
+
+# Otherwise you can access the model from the above chuck like this:
+# model$sample()
+# and then you have to input the sampler parameters, number of chains and the data in a list
+
+
+
+```
+
+### Checking covergence:
+
+```{r}
+
+```
+
+
+### Check estimates compared to the simulated:
+
+
+```{r}
+
+```
+

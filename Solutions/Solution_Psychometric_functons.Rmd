@@ -1,0 +1,183 @@
+---
+title: "Psychometric Solutions"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+```
+
+### Simulate a subject's psychometric function for a stimulus sequence from -20 to 20 with:
+
+$$
+\alpha = 5, 
+\beta = 2,
+\lambda = 0.05
+$$
+
+```{r}
+# define parameters 
+alpha = 5
+  
+beta = 2
+  
+lambda = 0.05 
+# Simulate the stimulus sequence:
+x = seq(-20,20,by = 0.1)
+  
+# function for the psychometric function:
+psychometric = function(x,alpha,beta,lambda){
+  # Another tip is that one can use the pnorm() function or the error function in the pracma package.
+  lambda + (1-2*lambda) * pnorm((x-alpha)/sqrt(2)*beta,0,1)
+  
+}
+
+# generate probabilities
+
+p = psychometric(x,alpha,beta,lambda)
+
+# plot stimulus sequences vs probabilities:
+
+## make a dataframe with x and p and use ggplot to plot it as points or a line.
+
+data.frame(x = x, p = p) %>% ggplot(aes(x = x, y = p))+geom_point()
+
+```
+
+
+### In these experiments we don't observe the probability of the our subjects responding we observe the response. 
+
+### Thus how do we go from our probabilities to the actual binary outcomes?
+
+
+```{r}
+# Covert each probability to a binary response by using a distribution.
+
+## the distribution is the bernoulli distribution, which is the simplified version of the binominal distribution
+
+binary_resp = rbinom(length(p),1,p)
+
+# plot stimulus sequences vs probabilities with the realized binary responses.
+
+## make a dataframe with x and p and the binary responses from above and use ggplot to plot it as points or a line.
+
+data.frame(x = x, p = p, bin = binary_resp) %>% 
+  ggplot()+geom_line(aes(x = x, y = p))+
+  geom_point(aes(x = x, y = bin))
+
+```
+
+
+## Code up a stanmodel that takes the stimulus sequences, binary responses that assumes the same psychometric function as you simulated data with. You can do this in the code-chunk below or make a seperate stan-file
+
+```{cmdstan, output.var="model"}
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+  
+  int N;
+  
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimulus sequence)  
+
+  array[N] int binary_resp;
+
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+  vector[N] x;
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the threshold
+  real alpha;
+  // Define the slope
+  real<lower=0> beta;
+  // Define the lapse rate
+  real<lower=0, upper = 0.5> lambda;
+  // remember constraints on the parameters!
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // threshold prior
+  alpha ~ normal(0,10);
+  // slope prior
+  beta ~ normal(0,10);  
+  // lapse rate prior
+  lambda ~ normal(0,0.1);
+
+  // Remember constraints on the parameters, either one relies on the definition of the parameters or use prior-distributions that only allow    // the right domain!
+  
+  // the model and the likelihood:
+    
+  // bernoulli() is a function in stan as well as erf() and Phi().
+  binary_resp ~ bernoulli(lambda + (1-2*lambda) * Phi((x-alpha)/sqrt(2) * beta));
+}
+
+
+```
+
+
+### Now lets see if the model runs:
+
+```{r}
+# if you wrote a seperate stan-file load it here:
+
+
+# Otherwise you can access the model from the above chuck like this:
+# model$sample()
+# and then you have to input the sampler parameters, number of chains and the data in a list
+
+fit = model$sample(iter_warmup = 200,
+                   iter_sampling = 200,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list(x = x, binary_resp = binary_resp, N = length(x))
+                   )
+
+```
+
+### Checking covergence:
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+fit$diagnostic_summary()
+# traceplots
+mcmc_trace(fit$draws())
+
+# pairplots!
+
+mcmc_pairs(fit$draws())
+```
+
+
+### Check estimates compared to the simulated:
+
+```{r}
+## take the draws from the fit using the posterior package's function as_draws_df() and plot the posterior distribution of each parameter together with some indication of what the simulated value was.
+
+full_mcmc = as_draws_df(fit$draws(c("beta","alpha","lambda"))) %>% 
+  select(-contains(".")) %>% pivot_longer(everything(), names_to = "parameter") %>% 
+  mutate(estimation = "Full_mcmc", draw = 1:n())
+
+full_mcmc %>% 
+  ggplot(aes(x = value))+ geom_histogram(col = "black")+
+  facet_wrap(~parameter,scales = "free")+
+  theme_classic()+
+  geom_vline(data = data.frame(parameter = c("alpha", "beta", "lambda"), values = c(alpha,beta,lambda)),
+             aes(xintercept = values), col = "red")
+```
+

@@ -1,0 +1,213 @@
+---
+title: "Entropy Hints"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+
+
+```
+
+### Lets start by simulating some response times that are dependent on the probabilities from the psychometric function. Here lets assume that the mean response times follow:
+
+$$
+\mu_{RT} = RT_{int} + RT_{\beta} \cdot (- p  \cdot log(p) - (1-p) \cdot log(1-p))
+$$
+
+```{r}
+## Define parameters
+alpha
+  
+beta
+  
+lambda 
+
+rt_int
+
+rt_beta 
+
+
+# Simulate the stimulus sequence:
+
+x = seq(-20,20,by = 0.1)
+  
+# function for the psychometric function:
+psychometric = function(x,alpha,beta,lambda){
+  # Another tip is that one can use the pnorm() function or the error function in the pracma package.
+  lambda + (1-2*lambda) * pnorm((x-alpha)/sqrt(2)*beta,0,1)
+  
+}
+
+# generate probabilities
+p = psychometric(x,alpha,beta,lambda)
+
+# Generate the mean response times from the formula above:
+
+#The entropy can be written as: (-p*log(p) - (1-p) * log(1-p))
+
+
+
+# plot stimulus sequences vs probabilities:
+
+
+# plot stimulus sequences vs mean response times:
+
+
+```
+
+
+### As we don't observe the probabilities we don't observe the mean response times. We observe a noisy measure of them
+
+### Thus how do we go from our mean response times to the noisy response times that we observe?
+
+
+```{r}
+# Covert each mean response time to a response time at trial t using a distribution.
+
+# One might use a normal distribution which then requires another parameter (the standard deviation or residual variance here.)
+rt_sd =
+
+
+# plot stimulus sequences vs response times.
+
+  
+  
+binary_resp = rbinom(length(p),1,p)
+```
+
+
+
+## Code up a stanmodel that takes the stimulus sequences, binary responses and response times and returns the parameters you choose above!
+
+```{cmdstan, output.var="model"}
+
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+  
+  int N;
+  
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimulus sequence)  
+  vector[N] x;
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+  vector[N] RT;
+
+
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+  array[N] int binary_resp;
+
+
+
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the threshold
+  real alpha;
+  // Define the slope
+  real<lower=0> beta;
+  // Define the lapse rate
+  real<lower=0, upper = 0.5> lambda;
+  
+  // Define the parameters for the response time part:
+    
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // threshold prior
+  alpha ~ normal(0,10);
+  // slope prior
+  beta ~ normal(0,10);  
+  // lapse rate prior
+  lambda ~ normal(0,0.1);
+  
+
+  // Priors for the response time parameters
+  
+  
+
+  // Remember constraints on the parameters, either one relies on the definition of the parameters or use prior-distributions that only allow    // the right domain!
+  
+  // the model and the likelihood:
+    
+  vector[N] p = lambda + (1-2*lambda) * Phi((x-alpha)/sqrt(2) * beta);
+    
+  // bernoulli() is a function in stan as well as erf() and Phi().
+  binary_resp ~ bernoulli(p);
+ 
+  // write out the likelihood for the response times using the same distribution as you used to simulate.
+  
+}
+
+```
+
+
+
+### Now lets see if the model runs:
+
+```{r}
+# if you wrote a seperate stan-file load it here:
+
+
+# Otherwise you can access the model from the above chuck like this:
+
+## add the data!
+
+fit = model$sample(iter_warmup = 200,
+                   iter_sampling = 200,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list()
+                   )
+
+# and then you have to input the sampler parameters, number of chains and the data in a list
+
+
+```
+
+### Checking covergence:
+
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+
+# traceplots
+
+# pairplots!
+
+```
+
+
+### Check estimates compared to the simulated:
+
+
+```{r}
+## take the draws from the fit using the posterior package's function as_draws_df() and plot the posterior distribution of each parameter together with some indication of what the simulated value was.
+
+# extracting the draws from the model fit:
+full_mcmc = as_draws_df(fit$draws(c("beta","alpha","lambda","rt_int","rt_beta","rt_sd")))
+
+
+```
+
+
+## What might be the problem with using a normal distribution / likelihood for the response time?
+
+## Can you come up with another distribution or some transformation that could help with the problem?
+
+

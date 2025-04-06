@@ -1,0 +1,257 @@
+---
+title: "Pathfinder Solutions"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+```
+
+
+# make the simulation as in the psychometric markdowns:
+```{r}
+model = cmdstan_model(here::here("Solutions","stanmodels","psychometric.stan"))
+
+alpha = 5
+  
+beta = 2
+  
+lambda = 0.05 
+# Simulate the stimulus sequence:
+x = seq(-20,20,by = 0.1)
+  
+# function for the psychometric function:
+psychometric = function(x,alpha,beta,lapse){
+  # Another tip is that one can use the pnorm() function or the error function in the pracma package.
+  lambda + (1-2*lambda) * pnorm((x-alpha)/sqrt(2)*beta,0,1)
+  
+}
+
+p = psychometric(x,alpha,beta,lambda)
+
+binary_resp = rbinom(length(p),1,p)
+
+fit = model$sample(iter_warmup = 200,
+                   iter_sampling = 200,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list(x = x, binary_resp = binary_resp, N = length(x))
+                   )
+
+
+full_mcmc = as_draws_df(fit$draws(c("beta","alpha","lambda"))) %>% 
+  select(-contains(".")) %>% pivot_longer(everything(), names_to = "parameter") %>% 
+  mutate(estimation = "Full_mcmc", draw = 1:n())
+```
+
+
+
+## Using Pathfinder
+
+### Check the following link and try to sample the same model using pathfinder:
+https://mc-stan.org/cmdstanr/reference/model-method-pathfinder.html
+
+### What are the estimates from pathfinder compared to the standard approach?
+
+```{r}
+# use pathfinder to estimate the same as above:
+path = model$pathfinder(data = list(x = x, binary_resp = binary_resp, N = length(x)))
+
+# then extract the estimates and plot them against the full mcmc model.
+
+pathfinder = as_draws_df(path$draws(c("beta","alpha","lambda"))) %>% 
+  select(-contains(".")) %>% pivot_longer(everything(), names_to = "parameter") %>% 
+  mutate(estimation = "pathfinder", draw = 1:n())
+
+rbind(pathfinder, full_mcmc) %>% 
+  ggplot(aes(x = parameter, y = value,col = estimation))+geom_boxplot()+
+  facet_wrap(~parameter, scales = "free")
+
+```
+
+
+### Now try and setup an experimental setting where each additional stimulus value gets choosen based on estimates from pathfinder.
+
+### perhaps select the next stimulus value at the estimated mean threshold.
+
+```{r, include=FALSE}
+# start with an inital stimulus value say 0 then try to run the pathfinder model using this.
+
+init_x = 0
+
+init_y = rbinom(1,1,psychometric(init_x,alpha,beta,lambda))
+
+path = model$pathfinder(data = list(x = init_x, binary_resp = init_y, N = length(init_x)))
+
+# after you get the pathfinder estimates select a new stimulus value using those estimates (you decide where to place them!). 
+# Then generate the next stimulus value and generate a binary response for that stimulus value and run the model again (now on 2 datapoints).
+
+next_x = data.frame(path$summary("alpha")) %>% .$median
+
+next_y = rbinom(1,1,psychometric(next_x,alpha,beta,lambda))
+
+path = model$pathfinder(data = list(x = c(init_x,next_x), binary_resp = c(init_y,next_y), N = length(c(init_x,next_x))))
+
+path
+
+# repeat for how many trials you like
+
+n_trials = 100
+init_x = 0
+init_y = rbinom(1,1,psychometric(init_x,alpha,beta,lambda))
+
+xs = c(init_x)
+ys = c(init_y)
+
+df = data.frame()
+
+for(t in 1:n_trials){
+
+  path = model$pathfinder(data = list(x = xs, binary_resp = ys, N = length(xs)))
+
+  next_x = data.frame(path$summary("alpha")) %>% .$median
+  
+  next_y = rbinom(1,1,psychometric(next_x,alpha,beta,lambda))
+  
+  xs = c(xs,next_x)
+  ys = c(ys,next_y)
+
+  df_temp = path$summary(c("alpha","beta","lambda")) %>% select(variable,median,q5,q95) %>% 
+    mutate(time = path$time(),
+           trial = t) %>% 
+    unnest()
+  
+  df = rbind(df, df_temp)
+}
+```
+
+
+```{r}
+df %>% 
+  ggplot(aes(x = trial, y = time))+
+  geom_point()
+
+
+df %>% 
+  ggplot(aes(x = trial, y = median,ymin = q5, ymax = q95))+
+  facet_wrap(~variable, scales = "free", ncol = 3)+
+  geom_pointrange()+
+  geom_hline(data = data.frame(variable = c("alpha", "beta", "lambda"), values = c(alpha,beta,lambda)),
+             aes(yintercept = values), col = "red")
+
+```
+
+### How much faster can pathfinder do this compared to the full MCMC-sampling of stan?
+
+```{r, include=FALSE}
+#  keep track of estimation time and comparing to the full MCMC sampling method. 
+
+# One can extract the timne taken to fit with fit$time()
+
+n_trials = 100
+init_x = 0
+init_y = rbinom(1,1,psychometric(init_x,alpha,beta,lambda))
+
+xs = c(init_x)
+ys = c(init_y)
+
+df = data.frame()
+
+for(t in 1:n_trials){
+
+  path = model$pathfinder(data = list(x = xs, binary_resp = ys, N = length(xs)),
+                          draws = 1000,
+                          num_paths = 1)
+  
+  full = fit = model$sample(iter_warmup = 1000,
+                   iter_sampling = 1000,
+                   adapt_delta = 0.9,
+                   chains = 1,
+                   refresh = 0,
+                   data = list(x = xs, binary_resp = ys, N = length(xs))
+                   )
+
+  next_x = data.frame(path$summary("alpha")) %>% .$median + 0.5
+  
+  next_y = rbinom(1,1,psychometric(next_x,alpha,beta,lambda))
+  
+  xs = c(xs,next_x)
+  ys = c(ys,next_y)
+
+  df_path = path$summary(c("alpha","beta","lambda")) %>% select(variable,median,q5,q95) %>% 
+    mutate(time = path$time(),
+           trial = t) %>% 
+    unnest() %>% mutate(estimation = "pathfinder")
+
+  df_full = full$summary(c("alpha","beta","lambda")) %>% 
+    select(variable,median,q5,q95) %>% 
+    mutate(time = full$time()$total,
+           trial = t) %>% 
+    unnest()%>% mutate(estimation = "full MCMC")
+
+  df_temp = rbind(df_path,df_full)
+    
+  df = rbind(df, df_temp)
+}
+
+```
+
+```{r, fig.height=6,fig.width=10}
+df %>% select(trial,time,estimation) %>% distinct() %>% 
+  ggplot(aes(x = trial, y = time, col = estimation))+
+  geom_point()
+
+
+df %>% 
+  ggplot(aes(x = trial, y = median,ymin = q5, ymax = q95, col = estimation))+
+  facet_grid(variable~estimation, scales = "free")+
+  geom_pointrange()+
+  geom_hline(data = data.frame(variable = c("alpha", "beta", "lambda"), values = c(alpha,beta,lambda)),
+             aes(yintercept = values), col = "red")
+
+```
+
+
+
+### How do you select the next stimulus value if you want to minimize the posterior spread of the threshold?
+
+```{r}
+
+# play around with the decision rule for selecting the next stimulus. Use the information from pathfinder to guide your decision
+
+# It seems to be around the threshold,
+# but one has to select values around it and not exactly the estimate,
+# as the slope is then really poorly estimated if you only select on the basis of the estimated threshold.
+# interestingly if you select a constant value above the threshold as shown above,
+# you end up with a posterior for the threshold that is skewed. 
+
+```
+
+
+### What about the slope or the lapse rate?
+
+```{r}
+
+# play around with the decision rule for selecting the next stimulus. Use the information from pathfinder to guide your decision
+
+```
+
+
+### try and plot the trajectory of the estimate of the parameters across trials for different ways of selecting stimulus values.
+
+```{r}
+
+# make a plot with iteration of the experiment (experiment trial) on the x-axis and the estimated parameter (from pathfinder on the y-axis).
+
+# Extra points for including the uncertainty of the estimated parameters.
+
+```
+

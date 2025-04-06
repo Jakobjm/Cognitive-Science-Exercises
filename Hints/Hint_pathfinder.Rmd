@@ -1,0 +1,88 @@
+---
+title: "Pathfinder Hint"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+```
+
+
+
+## Using Pathfinder
+
+### Check the following link and try to sample the same model using pathfinder:
+https://mc-stan.org/cmdstanr/reference/model-method-pathfinder.html
+
+### What are the estimates from pathfinder compared to the standard approach?
+
+```{r}
+# use pathfinder to estimate the same as above:
+model$pathfinder(data = list(x = x, y = y, N = length(x)))
+
+# then extract the estimates and plot them against the full mcmc model.
+
+```
+
+
+### Now try and setup an experimental setting where each additional stimulus value gets choosen based on estimates from pathfinder.
+
+### perhaps select the next stimulus value at the estimated mean threshold.
+
+```{r}
+# start with an inital stimulus value say 0 then try to run the pathfinder model using this.
+
+# after you get the pathfinder estimates select a new stimulus value using those estimates (you decide where to place them!). 
+
+# Then generate the next stimulus value and generate a binary response for that stimulus value and run the model again (now on 2 datapoints).
+
+# repeat for how many trials you like (loop over trials!).
+
+```
+
+### How much faster can pathfinder do this compared to the full MCMC-sampling of stan?
+
+```{r}
+
+#  keep track of estimation time and comparing to the full MCMC sampling method. 
+
+# One can extract the timne taken to fit with fit$time()
+
+```
+
+
+### How do you select the next stimulus value if you want to minimize the posterior spread of the threshold?
+
+```{r}
+
+# play around with the decision rule for selecting the next stimulus. Use the information from pathfinder to guide your decision
+
+```
+
+
+### What about the slope or the lapse rate?
+
+```{r}
+
+# play around with the decision rule for selecting the next stimulus. Use the information from pathfinder to guide your decision
+
+```
+
+
+### try and plot the trajectory of the estimate of the parameters across trials for different ways of selecting stimulus values.
+
+```{r}
+
+# make a plot with iteration of the experiment (experiment trial) on the x-axis and the estimated parameter (from pathfinder on the y-axis).
+
+# Extra points for including the uncertainty of the estimated parameters.
+
+```
+

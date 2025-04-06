@@ -1,0 +1,162 @@
+---
+title: "PSI Hint"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+```
+
+### Simulate a subject's psychometric function for a stimulus sequence from -20 to 20 with:
+
+$$
+\alpha = 5, 
+\beta = 2,
+\lambda = 0.05
+$$
+
+```{r}
+# define parameters 
+alpha =
+  
+beta = 
+  
+lambda = 
+# Simulate the stimulus sequence:
+x = seq(-20,20,by = 0.1)
+  
+# function for the psychometric function:
+psychometric = function(x,alpha,beta,lambda){
+  # Another tip is that one can use the pnorm() function or the error function in the pracma package.
+  
+}
+
+# generate probabilities
+
+p = psychometric(x,alpha,beta,lambda)
+
+# plot stimulus sequences vs probabilities:
+
+## make a dataframe with x and p and use ggplot to plot it as points or a line.
+
+```
+
+
+### In these experiments we don't observe the probability of the our subjects responding we observe the response. 
+
+### Thus how do we go from our probabilities to the actual binary outcomes?
+
+
+```{r}
+# Covert each probability to a binary response by using a distribution.
+
+## the distribution is the bernoulli distribution, which is the simplified version of the binominal distribution
+
+
+# plot stimulus sequences vs probabilities with the realized binary responses.
+
+## make a dataframe with x and p and the binary responses from above and use ggplot to plot it as points or a line.
+
+```
+
+
+## Code up a stanmodel that takes the stimulus sequences, binary responses that assumes the same psychometric function as you simulated data with. You can do this in the code-chunk below or make a seperate stan-file
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimulus sequence)  
+
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the threshold
+  
+  // Define the slope
+  
+  // Define the lapse rate
+  
+  // remember constraints on the parameters!
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // threshold prior
+  
+  // slope prior
+  
+  // lapse rate prior
+  
+  
+  // Remember constraints on the parameters, either one relies on the definition of the parameters or use prior-distributions that only allow    // the right domain!
+  
+  
+  
+  // the model and the likelihood:
+    
+    
+  // bernoulli() is a function in stan as well as erf() and Phi().
+
+    
+}
+```
+
+
+### Now lets see if the model runs:
+
+```{r}
+# if you wrote a seperate stan-file load it here:
+
+
+# Otherwise you can access the model from the above chuck like this:
+# model$sample()
+# and then you have to input the sampler parameters, number of chains and the data in a list
+
+fit = model$sample(iter_warmup = 200,
+                   iter_sampling = 200,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list(x = x, y = y, N = length(x))
+                   )
+
+```
+
+### Checking covergence:
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+
+# traceplots
+
+
+# pairplots!
+```
+
+
+### Check estimates compared to the simulated:
+
+```{r}
+## take the draws from the fit using the posterior package's function as_draws_df() and plot the posterior distribution of each parameter together with some indication of what the simulated value was.
+
+
+```
+

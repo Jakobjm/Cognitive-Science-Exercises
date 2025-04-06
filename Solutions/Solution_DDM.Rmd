@@ -1,0 +1,344 @@
+---
+title: "DDM Solutions"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot,RWiener)
+
+register_knitr_engine(override = FALSE)
+```
+
+## Lets start by simulating some data from the DDM. This can be done using the RWiener package. 
+## Find the random number generator from the package and generate 100 samples and plot these
+
+```{r}
+# the function is called rweiner and needs the following parameters: 
+# n number of samples, alpha = bounary seperation, tau = non-decision-time, beta = bias, delta = drift-rate
+
+# define parameters 
+n = 100
+
+boundary = 3
+  
+bias = 0.5 
+  
+ndt = 0.2
+  
+drift = 5
+
+df = rwiener(n,boundary, ndt, bias,drift) %>% mutate(resp = ifelse(resp == "lower",0,1)) %>% rename(RT = q)
+
+```
+
+
+## Write a stan model that fits this data:
+
+## Check the slides!
+
+```{cmdstan, output.var="model"}
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+  int N;
+  
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+  vector[N] RT;
+  
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+  array[N] int binary_resp;
+
+}
+
+transformed data{
+  real minRT = min(RT);
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the boundary
+  real<lower=0> boundary;
+  
+  // Define the bias
+  real<lower=0, upper = 1> bias;
+  
+  // Define the non-decision-time
+  real<lower=0, upper = minRT> ndt;
+  
+  // Define the Drift-rate
+  real drift;
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // boundary prior
+  boundary ~ normal(2,5);
+  
+  // bias prior
+  bias ~ normal(0.5,1);
+  
+  // non-decision-time prior
+  ndt ~ normal(0,0.4);
+  
+  // drift-rate prior
+  drift ~ normal(0,5);
+
+  // The model and the likelihood:
+
+  for(t in 1:N){
+    if(binary_resp[t] == 1){
+      RT[t] ~ wiener(boundary,ndt,bias,drift);
+    }else if(binary_resp[t] == 0){
+      RT[t] ~ wiener(boundary,ndt,1-bias,-drift);
+    }
+  }
+  
+}
+```
+
+## Fit the model
+```{r}
+fit = model$sample(iter_warmup = 500,
+                   iter_sampling = 500,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list(binary_resp = df$resp, RT = df$RT, N = nrow(df)))
+```
+
+
+## check covergence of the model and the estimated parameters compared to the simulated
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+fit
+# traceplots
+mcmc_trace(fit$draws())
+# pairplots!
+mcmc_pairs(fit$draws())
+
+```
+
+
+
+
+# Now lets infuse the DDM with the psychometric function. Or atleast the stimulus intensity
+
+## One apporach is to make the drift-rate vary as a function of the probability p.
+
+$$
+\delta_t = p \cdot (1-p) \cdot \delta
+$$
+
+## Use the psychometric simulations to generate the probabilities (p) and then generate Response times and binary responses from the
+## DDM / RWiener distribution 
+
+
+```{r}
+
+boundary = 3
+  
+bias = 0.5
+  
+ndt = 0.2
+  
+drift = 5
+  
+alpha = 5
+  
+beta = 0.5
+  
+lambda = 0.05 
+  
+x = seq(-20,20,by = 0.1)
+
+psychometric = function(x,alpha,beta,lambda){
+  # Another tip is that one can use the pnorm() function or the error function in the pracma package.
+  lambda + (1-2*lambda) * pnorm((x-alpha)/sqrt(2)*beta,0,1)
+  
+}
+
+p = psychometric(x,alpha,beta,lambda)
+
+delta_t = (p - (1-p)) * drift
+
+
+df = data.frame()
+for(t in 1:length(delta_t)){
+  df_temp = rwiener(1, boundary, ndt, bias, delta_t[t])
+  
+  df = rbind(df,df_temp)
+}
+
+
+df = df%>% mutate(x = x, resp = ifelse(resp == "lower",0,1)) %>% rename(RT = q)
+
+```
+
+## Now plot the binary responses together with the response times. 
+
+```{r}
+
+df %>% 
+  ggplot(aes(x = x, y = RT))+geom_point()
+
+df %>% 
+  ggplot(aes(x = x, y = resp))+
+  geom_point()+
+  geom_line(data = data.frame(x = x, p = p), aes(x = x, y = p))
+
+```
+
+
+
+# write another stan program that uses the above equation and data:
+
+```{cmdstan, output.var="model"}
+
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+  int N;
+  
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+  vector[N] RT;
+  
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimuli)  
+  vector[N] x;
+  
+  
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+  array[N] int binary_resp;
+
+}
+
+transformed data{
+  real minRT = min(RT);
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  
+  // Define the threshold
+  
+  real alpha;
+  
+  // Define the slope
+  
+  real<lower=0> beta;
+  
+  // Define the lapse rate
+
+  real<lower=0, upper = 0.5> lambda;
+  
+  
+  // Define the boundary
+  real<lower=0> boundary;
+  
+  // Define the bias
+  real<lower=0, upper = 1> bias;
+  
+  // Define the non-decision-time
+  real<lower=0, upper = minRT> ndt;
+  
+  // Define the Drift-rate
+  real drift;
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+   
+  // threshold prior
+  alpha ~ normal(0,10);
+  // slope prior
+  beta ~ normal(0,10);  
+  // lapse rate prior
+  lambda ~ normal(0,0.1);
+  
+  // boundary prior
+  boundary ~ normal(2,5);
+  
+  // bias prior
+  bias ~ normal(0.5,1);
+  
+  // non-decision-time prior
+  ndt ~ normal(0,0.4);
+  
+  // drift-rate prior
+  drift ~ normal(0,5);
+
+  // The model and the likelihood:
+  
+  real p;
+  
+  for(t in 1:N){
+    p = lambda + (1-2*lambda) * Phi((x[t]-alpha)/sqrt(2) * beta);
+    if(binary_resp[t] == 1){
+      RT[t] ~ wiener(boundary,ndt,bias,(p - (1-p)) * drift);
+    }else if(binary_resp[t] == 0){
+      RT[t] ~ wiener(boundary,ndt,1-bias,- ((p - (1-p)) * drift));
+    }
+  }
+  
+}
+
+```
+
+## Fit the model
+```{r}
+fit = model$sample(iter_warmup = 500,
+                   iter_sampling = 500,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list(binary_resp = df$resp,x = df$x, RT = df$RT, N = nrow(df)))
+```
+
+
+## check covergence of the model and the estimated parameters compared to the simulated
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+fit
+# traceplots
+mcmc_trace(fit$draws())
+# pairplots!
+mcmc_pairs(fit$draws())
+
+```
+
+### Check estimates compared to the simulated:
+
+```{r}
+## take the draws from the fit using the posterior package's function as_draws_df() and plot the posterior distribution of each parameter together with some indication of what the simulated value was.
+
+draws = as_draws_df(fit$draws(c("beta","alpha","lambda","boundary","bias","ndt","drift"))) %>% 
+  select(-contains(".")) %>% pivot_longer(everything(), names_to = "parameter") %>% 
+  mutate(draw = 1:n())
+
+draws %>% 
+  ggplot(aes(x = value))+ geom_histogram(col = "black")+
+  facet_wrap(~parameter,scales = "free")+
+  theme_classic()+
+  geom_vline(data = data.frame(parameter = c("alpha", "beta", "lambda","boundary","bias","ndt","drift"),
+                               values = c(alpha,beta,lambda,boundary,bias,ndt,drift)),
+             aes(xintercept = values), col = "red")
+```
+

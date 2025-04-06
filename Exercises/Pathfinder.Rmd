@@ -1,0 +1,65 @@
+---
+title: "Pathfinder exercises"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+
+```
+
+
+
+## Using Pathfinder
+
+### Check the following link and try to sample the same model using pathfinder:
+https://mc-stan.org/cmdstanr/reference/model-method-pathfinder.html
+
+### What are the estimates from pathfinder compared to the standard approach?
+
+```{r}
+
+```
+
+
+### Now try and setup an experimental setting where each additional stimulus value gets choosen based on estimates from pathfinder.
+
+### perhaps select the next stimulus value at the estimated mean threshold.
+
+```{r}
+
+```
+
+### How much faster can pathfinder do this compared to the full MCMC-sampling of stan?
+
+```{r}
+
+```
+
+
+### How do you select the next stimulus value if you want to minimize the posterior spread of the threshold?
+
+```{r}
+
+```
+
+
+### What about the slope or the lapse rate?
+
+```{r}
+```
+
+
+### try and plot the trajectory of the estimate of the parameters across trials for different ways of selecting stimulus values.
+
+```{r}
+
+```
+

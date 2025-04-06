@@ -1,0 +1,248 @@
+---
+title: "DDM Hint"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot,RWiener)
+
+register_knitr_engine(override = FALSE)
+```
+
+## Lets start by simulating some data from the DDM. This can be done using the RWiener package. 
+## Find the random number generator from the package and generate 100 samples and plot these
+
+```{r}
+# the function is called rweiner and needs the following parameters: 
+# n number of samples, alpha = bounary seperation, tau = non-decision-time, beta = bias, delta = drift-rate
+
+# define parameters 
+n = 100
+
+boundary =
+  
+bias = 
+  
+ndt = 
+  
+drift = 
+
+rwiener()
+
+```
+
+
+## Write a stan model that fits this data:
+
+## Check the slides!
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the boundary
+  
+  // Define the bias
+  
+  // Define the non-decision-time
+  
+  // Define the Drift-rate
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // boundary prior
+  
+  // bias prior
+  
+  // non-decision-time prior
+  
+  // drift-rate prior
+  
+  
+  // The model and the likelihood:
+    
+
+}
+```
+
+## Fit the model
+```{r}
+fit = model$sample(iter_warmup = 500,
+                   iter_sampling = 500,
+                   adapt_delta = 0.9,
+                   parallel_chains = 4,
+                   chains = 4,
+                   data = list(resp = resp, RT = RT, N = length(x)))
+```
+
+
+## check covergence of the model and the estimated parameters compared to the simulated
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+
+# traceplots
+
+# pairplots!
+```
+
+
+
+
+# Now lets infuse the DDM with the psychometric function. Or atleast the stimulus intensity
+
+## One apporach is to make the drift-rate vary as a function of the probability p.
+
+$$
+\delta_t = p \cdot (1-p) \cdot \delta
+$$
+
+## Use the psychometric simulations to generate the probabilities (p) and then generate Response times and binary responses from the
+## DDM / RWiener distribution 
+
+
+```{r}
+
+boundary =
+  
+bias = 
+  
+ndt = 
+  
+drift = 
+  
+alpha = 
+  
+beta = 
+  
+lambda = 
+  
+x = 
+  
+p = 
+
+delta_t = 
+
+df = rwiener()
+
+```
+
+
+## Now plot the binary responses together with the response times. 
+
+```{r}
+
+
+```
+
+
+
+# write another stan program that uses the above equation and data:
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimuli)  
+
+  
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  
+  // Define the threshold
+  
+  // Define the slope
+  
+  // Define the lapse rate
+  
+  // Define the boundary
+  
+  // Define the bias
+  
+  // Define the non-decision-time
+  
+  // Define the Drift-rate
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // boundary prior
+  
+  // bias prior
+  
+  // non-decision-time prior
+  
+  // drift-rate prior
+  
+  // threshold prior
+  
+  // slope prior
+  
+  // lapse rate prior
+  
+  
+  
+  // The model and the likelihood:
+    
+
+}
+```
+
+
+# check covergence of the model and the estimated parameters compared to the simulated
+```{r}
+# investigation of divergences max-treedepths, effective sample size and Rhat.
+
+
+```
+
+
+### Check estimates compared to the simulated:
+
+```{r}
+## take the draws from the fit using the posterior package's function as_draws_df() and plot the posterior distribution of each parameter together with some indication of what the simulated value was.
+
+
+# extracting the draws from the model fit:
+
+draws = as_draws_df(fit$draws(c("beta","alpha","lambda","boundary","bias","ndt","drift")))
+```
+
+

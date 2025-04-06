@@ -1,0 +1,195 @@
+---
+title: "DDM Exercises"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot,RWiener)
+
+register_knitr_engine(override = FALSE)
+```
+
+## Lets start by simulating some data from the DDM. This can be done using the RWiener package. 
+## Find the random number generator from the package and generate 100 samples and plot these
+
+```{r}
+
+```
+
+
+## Write a stan model that fits this data:
+
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the boundary
+  
+  // Define the bias
+  
+  // Define the non-decision-time
+  
+  // Define the Drift-rate
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // boundary prior
+  
+  // bias prior
+  
+  // non-decision-time prior
+  
+  // drift-rate prior
+  
+  
+  // The model and the likelihood:
+    
+
+}
+```
+
+
+# check covergence of the model and the estimated parameters compared to the simulated
+```{r}
+```
+
+
+
+
+# Now lets infuse the DDM with the psychometric function. Or atleast the stimulus intensity
+
+## One apporach is to make the drift-rate vary as a function of the probability p.
+
+$$
+\delta_t = p \cdot (1-p) \cdot \delta
+$$
+
+## Use the psychometric simulations to generate the probabilities (p) and then generate Response times and binary responses from the
+## DDM / RWiener distribution 
+
+
+```{r}
+
+```
+
+
+
+## Now plot the binary responses together with the response times. 
+```{r}
+
+```
+
+
+
+# write another stan program that uses the above equation and data:
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimuli)  
+
+  
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  
+  // Define the threshold
+  
+  // Define the slope
+  
+  // Define the lapse rate
+  
+  // Define the boundary
+  
+  // Define the bias
+  
+  // Define the non-decision-time
+  
+  // Define the Drift-rate
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // boundary prior
+  
+  // bias prior
+  
+  // non-decision-time prior
+  
+  // drift-rate prior
+  
+  // threshold prior
+  
+  // slope prior
+  
+  // lapse rate prior
+  
+  
+  
+  // The model and the likelihood:
+    
+
+}
+```
+
+
+## Fit the model
+```{r}
+
+```
+
+
+
+# check covergence of the model and the estimated parameters compared to the simulated
+```{r}
+
+```
+
+
+### Check estimates compared to the simulated:
+```{r}
+
+```
+
+
+### Can you think of another way to combine the stimulus and the ddm parameters?
+

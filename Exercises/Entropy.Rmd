@@ -1,0 +1,153 @@
+---
+title: "Entropy Exercises"
+output: html_document
+date: "2025-04-05"
+---
+
+## load your packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, cmdstanr, brms, posterior,bayesplot)
+
+register_knitr_engine(override = FALSE)
+
+
+```
+
+### Lets start by simulating some response times that are dependent on the probabilities from the psychometric function. Here lets assume that the mean response times follow:
+
+$$
+\mu_{RT} = RT_{int} + RT_{\beta} \cdot (- p  \cdot log(p) - (1-p) \cdot log(1-p))
+$$
+
+```{r}
+## Define parameters
+
+
+# Simulate the stimulus sequence:
+
+# function for the psychometric function:
+
+
+# generate probabilities
+
+# Generate the mean response times from the formula above:
+
+# plot stimulus sequences vs probabilities:
+
+# plot stimulus sequences vs mean response times:
+
+
+```
+
+
+
+### As we don't observe the probabilities we don't observe the mean response times. We observe a noisy measure of them
+
+### Thus how do we go from our mean response times to the noisy response times that we observe?
+
+
+```{r}
+# Covert each mean response time to a response time at trial t using a distribution.
+
+
+# plot stimulus sequences vs response times.
+
+
+```
+
+
+
+## Code up a stanmodel that takes the stimulus sequences, binary responses and response times and returns the parameters you choose above!
+
+```{cmdstan, output.var="model"}
+
+// Data block for the input sequence and binary responses
+data {
+
+  // Define the number of datapoints this is defined by an integer
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the stimulus sequence)  
+
+  // Define a vector that is as long as the number of datapoints of real numbers (the response times)  
+  
+  // Define an array that is as long as the number of datapoints of integers (the binary responses)
+
+    
+}
+
+// This is the parameters block. Here we define the free parameters.
+parameters {
+  // Define the threshold
+  
+  // Define the slope
+  
+  // Define the lapse rate
+
+  // Define the RT_int
+
+  // Define the RT_beta
+
+  // Define the RT_sigma
+  
+  
+}
+
+// This is the model block here we define how we believe the model is and the priors of the parameters.
+
+model {
+  // priors
+  
+  // threshold prior
+  
+  // slope prior
+  
+  // lapse rate prior
+  
+  // RT_int prior
+  
+  // RT_beta prior
+  
+  // RT_sigma rate prior
+  
+  
+  // the model and the likelihood for both measures (one for the response times and one for the binary choices)
+    
+
+    
+}
+```
+
+
+
+### Now lets see if the model runs:
+
+```{r}
+# if you wrote a seperate stan-file load it here:
+
+
+# Otherwise you can access the model from the above chuck like this:
+
+# model$sample()
+
+# and then you have to input the sampler parameters, number of chains and the data in a list
+
+
+```
+
+### Checking covergence:
+
+```{r}
+
+```
+
+
+### Check estimates compared to the simulated:
+
+
+```{r}
+
+```
+
