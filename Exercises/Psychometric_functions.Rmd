@@ -26,11 +26,17 @@ $$
 
 ```{r}
 # define parameters 
-
+alpha <- 5
+beta <- 2
+lambda <- 0.05
 # Simulate the stimulus sequence:
+stims <- seq(-20,20,0.1)
 
 # function for the psychometric function:
-
+Psychometric_function <-function(alpha, beta, lambda, x=stims, gamma){
+  sim <- gamma +(1-gamma-lambda)*pnorm(x, alpha, beta)
+  return(sim)
+}
 
 # generate probabilities
 
